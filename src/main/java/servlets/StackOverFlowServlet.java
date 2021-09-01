@@ -15,6 +15,9 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.List;
 import java.util.zip.GZIPInputStream;
 
 public class StackOverFlowServlet extends HttpServlet {
@@ -48,11 +51,15 @@ public class StackOverFlowServlet extends HttpServlet {
                 bufferedReader.close();
 
                 Root root = gson.fromJson(stringBuilder.toString(), Root.class);
-                for (Item root1 : root.items) {
-                    resp.getWriter().print(gson.toJson(root1));
-                }
 
-//            }
+                List<Boolean> isAnswered = new ArrayList<>();
+                for (Item root1 : root.items) {
+                    if(root1.is_answered){
+                        isAnswered.add(true);
+                    }
+                }
+                resp.getWriter().printf("{ \n \"%s\" { \"total:\": %s, \"answered\": %s} \n}" , tag, gson.toJson(root.items.size()), isAnswered.size());
+
             }
         } catch (Exception e){
             e.printStackTrace();
