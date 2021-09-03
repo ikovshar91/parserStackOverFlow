@@ -15,12 +15,12 @@ public class Main {
 
         server.setHandler(context);
 
-            try {
-                server.start();
-                server.join();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        try {
+            server.start();
+            server.join();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
+}
 
