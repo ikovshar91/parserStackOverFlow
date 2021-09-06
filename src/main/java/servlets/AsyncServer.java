@@ -18,6 +18,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.zip.GZIPInputStream;
 
 
@@ -25,45 +28,26 @@ public class AsyncServer extends HttpServlet {
     Gson gson = new Gson();
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        final AsyncContext ctxt = req.startAsync();
-        List<String> tags = Arrays.asList(req.getParameterValues("tag"));
+        String[] tags = req.getParameterValues("tag");
+        Executor executor = Executors.newFixedThreadPool(3);
 
-
-        //При написании такой конструкции на вызове метода getStackOverFlow требует его обернуть в трай блок и далее подобная ебанина
-        List<CompletableFuture<Root>> futures = tags.stream().map(tag -> CompletableFuture.supplyAsync(() -> {
+        for (String tag : tags) {
+            CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
+                        try {
+                            StackOverFlowServlet servlet = new StackOverFlowServlet();
+                            Root root = getStackOverFlow(tag);
+                            servlet.setParameter(tag, gson, root);
+                            servlet.doGet(req, resp);
+                        } catch (ServletException | IOException e) {
+                            e.printStackTrace();
+                        }
+                    },executor);
             try {
-                return getStackOverFlow(tag);
-            } catch (IOException exception) {
-                exception.printStackTrace();
+                completableFuture.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
             }
-            return null;
-        }));
-
-
-        //А дэдлок в моей голове это вопрос того где правильно вытаскивать этот Root, в реализации метода run, т.к. он там работает непосредственно с каждым рутом в отдельности
-        // но в то же время нужно вне реализации метода нужно вытащить эти футуры и подставить к каждой этот метод ран для параллелизма
-        //ну либо я даунич и неправильно понимаю для чего вообще нужен этот CompletableFuture
-
-
-
-        //List<Root> roots = CompletableFuture.allOf(futures);
-
-            ctxt.start(new Runnable() {
-                           @Override
-                           public void run() {
-                               try {
-                                   StackOverFlowServlet servlet = new StackOverFlowServlet();
-                                   Root root = getStackOverFlow(tag);
-                                   servlet.setParameter(tag, gson, root);
-                                   servlet.doGet(req, resp);
-                                   ctxt.complete();
-                               } catch (ServletException | IOException e) {
-                                   e.printStackTrace();
-                               }
-                           }
-                       }
-            );
-
+        }
     }
 
     public Root getStackOverFlow(String tag) throws IOException {

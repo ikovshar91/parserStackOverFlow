@@ -26,7 +26,6 @@ public class StackOverFlowServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json");
-
         try {
             if (tag == null) {
                 resp.setStatus(404);
@@ -46,7 +45,6 @@ public class StackOverFlowServlet extends HttpServlet {
             resp.setStatus(500);
         }
     }
-
 
 }
 
