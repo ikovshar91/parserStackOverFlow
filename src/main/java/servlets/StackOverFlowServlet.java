@@ -1,51 +1,52 @@
 package servlets;
 
 import com.google.gson.Gson;
-import json.Item;
-import json.Root;
 import json.Error;
+import json.Result;
+import json.Stats;
+import main.Repository;
+
+import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
-public class StackOverFlowServlet extends HttpServlet {
-    private String tag;
-    private Gson gson;
-    private Root root;
 
-    public void setParameter(String tag, Gson gson, Root root){
-        this.tag = tag;
-        this.gson = gson;
-        this.root = root;
-    }
+
+public class StackOverFlowServlet extends HttpServlet {
+private static final Gson gson = new Gson();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json");
-        try {
-            if (tag == null) {
-                resp.setStatus(404);
-            } else {
-                List<Boolean> isAnswered = new ArrayList<>();
-                for (Item root1 : root.items) {
-                    if (root1.is_answered) {
-                        isAnswered.add(true);
-                    }
-                }
-                resp.getWriter().printf("\"%s\":{ \"total:\": %s, \"answered\": %s}\n", tag, gson.toJson(root.items.size()), isAnswered.size());
-            }
-        } catch (Exception e){
-            e.printStackTrace();
-            Error error = new Error(String.format("Kakaya-to huynya proizoshla: %s", e.getMessage()));
-            resp.getWriter().print(gson.toJson(error));
-            resp.setStatus(500);
-        }
-    }
 
+        AsyncContext context = req.startAsync();
+        context.start(() -> {
+            Result<List<Stats>> statsResult = Repository.getStats(req.getParameterValues("tag"));
+            if (statsResult.result != null) {
+                List<Stats> stats = statsResult.result;
+                try {
+                    resp.getWriter().print(gson.toJson(stats));
+                    resp.setStatus(200);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    resp.setStatus(500);
+                }
+            } else {
+                resp.setStatus(500);
+                Error error = new Error(statsResult.exception);
+                try {
+                    resp.getWriter().print(gson.toJson(error));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            context.complete();
+        });
+    }
 }
 
 
