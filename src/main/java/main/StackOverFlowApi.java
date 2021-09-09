@@ -52,7 +52,6 @@ public class StackOverFlowApi {
         StringBuilder stringBuilder = new StringBuilder();
 
         try {
-
             while ((inputLine = bufferedReader.readLine()) != null) {
                 stringBuilder.append((inputLine));
             }

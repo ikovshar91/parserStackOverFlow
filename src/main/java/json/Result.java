@@ -1,5 +1,6 @@
 package json;
 
+
 public class Result <T>{
     public T result;
     public Exception exception;
