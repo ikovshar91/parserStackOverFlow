@@ -11,8 +11,11 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -23,15 +26,14 @@ public class StackOverFlowServlet extends HttpServlet {
     public StackOverFlowServlet(Executor executor){
         this.executor = executor;
     }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp){
         resp.setContentType("application/json");
+
         AsyncContext context = req.startAsync();
         context.start(() -> {
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    Result<List<Stats>> statsResult = Repository.getStats(req.getParameterValues("tag"));
+                    Result<List<Stats>> statsResult = getStats(req.getParameterValues("tag"), executor);
                     if (statsResult.result != null) {
                         List<Stats> stats = statsResult.result;
                         Map<String, OnlyStats> map = stats.stream().
@@ -53,9 +55,34 @@ public class StackOverFlowServlet extends HttpServlet {
                         }
                     }
                     context.complete();
-                }
-            });
         });
+    }
+
+    public static Result<List<Stats>> getStats(String [] tags, Executor executor){
+        List<Result<Stats>> statsResult = null;
+        try {
+            statsResult = Repository.getStatsForTags(tags, executor).get();
+
+        } catch (InterruptedException | ExecutionException e){
+            return new Result<>(e);
+        }
+
+        Optional<Exception> error = statsResult.stream()
+                .filter(r -> r.exception != null)
+                .map(r -> r.exception)
+                .findFirst();
+        if (error.isPresent()){
+            return new Result<>(error.get());
+        } else {
+            LinkedList<Stats> stats = new LinkedList<>();
+
+            statsResult.stream()
+                    .filter(r -> r.result != null)
+                    .map(r -> r.result)
+                    .forEach(stats::add);
+
+            return new Result<>(stats);
+        }
     }
 }
 
